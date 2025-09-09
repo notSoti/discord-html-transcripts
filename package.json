@@ -26,7 +26,7 @@
     "discord-transcripts"
   ],
   "author": "Derock <derock@derock.dev>",
-  "license": "GNU GPLv3",
+  "license": "Apache-2.0",
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
