@@ -1,15 +1,14 @@
 import {
   DiscordBold,
-  DiscordCodeBlock,
+  DiscordCode,
   DiscordCustomEmoji,
-  DiscordInlineCode,
   DiscordItalic,
   DiscordMention,
   DiscordQuote,
   DiscordSpoiler,
   DiscordTime,
   DiscordUnderlined,
-} from '@derockdev/discord-components-react';
+} from '@skyra/discord-components-react';
 import parse, { type RuleTypesExtended } from 'discord-markdown-parser';
 import { ChannelType, type APIMessageComponentEmoji } from 'discord.js';
 import React from 'react';
@@ -18,6 +17,7 @@ import { ASTNode as MessageASTNodes } from 'simple-markdown';
 import type { SingleASTNode } from 'simple-markdown';
 import type { RenderMessageContext } from '../';
 import { parseDiscordEmoji } from '../../utils/utils';
+import { DiscordHighlightedCode } from './components/DiscordHighlightedCode';
 
 export enum RenderType {
   EMBED,
@@ -166,12 +166,12 @@ export async function MessageSingleASTNode({ node, context }: { node: SingleASTN
 
     case 'codeBlock':
       if (context.type !== RenderType.REPLY) {
-        return <DiscordCodeBlock language={node.lang} code={node.content} />;
+        return <DiscordHighlightedCode language={node.lang} content={node.content} />;
       }
-      return <DiscordInlineCode>{node.content}</DiscordInlineCode>;
+      return <DiscordCode>{node.content}</DiscordCode>;
 
     case 'inlineCode':
-      return <DiscordInlineCode>{node.content}</DiscordInlineCode>;
+      return <DiscordCode>{node.content}</DiscordCode>;
 
     case 'em':
       return (
@@ -222,15 +222,16 @@ export async function MessageSingleASTNode({ node, context }: { node: SingleASTN
           name={node.name}
           url={parseDiscordEmoji(node as APIMessageComponentEmoji)}
           embedEmoji={context.type === RenderType.EMBED}
-          largeEmoji={context._internal?.largeEmojis}
+          jumbo={context._internal?.largeEmojis}
         />
       );
 
     case 'timestamp':
-      return <DiscordTime timestamp={parseInt(node.timestamp) * 1000} format={node.format} />;
+      return <DiscordTime>TODO: fixme</DiscordTime>;
+    // return <DiscordTime timestamp={parseInt(node.timestamp) * 1000} format={node.format} />;
 
     default: {
-      console.log(`Unknown node type: ${type}`, node);
+      console.log(`[discord-html-transcripts] Unknown node type: ${type}`, node);
       return typeof node.content === 'string' ? (
         node.content
       ) : (

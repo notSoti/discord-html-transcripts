@@ -1,4 +1,4 @@
-import { DiscordReply } from '@derockdev/discord-components-react';
+import { DiscordReply } from '@skyra/discord-components-react';
 import { type Message, UserFlags } from 'discord.js';
 import type { RenderMessageContext } from '..';
 import React from 'react';

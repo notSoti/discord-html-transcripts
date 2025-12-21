@@ -1,4 +1,4 @@
-import { DiscordReaction, DiscordReactions, DiscordSystemMessage } from '@derockdev/discord-components-react';
+import { DiscordReaction, DiscordReactions, DiscordSystemMessage } from '@skyra/discord-components-react';
 import { MessageType, type GuildMember, type Message, type User } from 'discord.js';
 import React from 'react';
 import { parseDiscordEmoji } from '../../utils/utils';

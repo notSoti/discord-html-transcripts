@@ -5,18 +5,20 @@ import { buildProfiles } from '../utils/buildProfiles';
 import { revealSpoiler, scrollToMessage } from '../static/client';
 import { readFileSync } from 'fs';
 import path from 'path';
-import { renderToString } from '@derockdev/discord-components-core/hydrate';
+import { render as renderLit } from '@lit-labs/ssr';
 import DiscordMessages from './transcript';
 import type { ResolveImageCallback } from '../downloader/images';
 import { streamToString } from '../utils/utils';
+import { collectResult } from '@lit-labs/ssr/lib/render-result';
 
 // read the package.json file and get the @derockdev/discord-components-core version
-let discordComponentsVersion = '^3.6.1';
+// TODO: update this
+let discordComponentsVersion = '^4.0.2';
 
 try {
   const packagePath = path.join(__dirname, '..', '..', 'package.json');
   const packageJSON = JSON.parse(readFileSync(packagePath, 'utf8'));
-  discordComponentsVersion = packageJSON.dependencies['@derockdev/discord-components-core'] ?? discordComponentsVersion;
+  discordComponentsVersion = packageJSON.dependencies['@skyra/discord-components-react'] ?? discordComponentsVersion;
   // eslint-disable-next-line no-empty
 } catch {} // ignore errors
 
@@ -75,13 +77,13 @@ export default async function render({ messages, channel, callbacks, ...options 
             {/* profiles */}
             <script
               dangerouslySetInnerHTML={{
-                __html: `window.$discordMessage={profiles:${JSON.stringify(await profiles)}}`,
+                __html: `globalThis.$discordMessage={profiles:${JSON.stringify(await profiles)}}`,
               }}
             ></script>
             {/* component library */}
             <script
               type="module"
-              src={`https://cdn.jsdelivr.net/npm/@derockdev/discord-components-core@${discordComponentsVersion}/dist/derockdev-discord-components-core/derockdev-discord-components-core.esm.js`}
+              src={`https://cdn.jsdelivr.net/npm/@skyra/discord-components-core@${discordComponentsVersion}/+esm`}
             ></script>
           </>
         )}
@@ -104,15 +106,17 @@ export default async function render({ messages, channel, callbacks, ...options 
   const markup = await streamToString(prelude);
 
   if (options.hydrate) {
-    const result = await renderToString(markup, {
-      beforeHydrate: async (document) => {
-        document.defaultView.$discordMessage = {
-          profiles: await profiles,
-        };
-      },
-    });
+    const result = renderLit(markup);
 
-    return result.html;
+    // const result = await renderToString(markup, {
+    //   beforeHydrate: async (document) => {
+    //     document.defaultView.$discordMessage = {
+    //       profiles: await profiles,
+    //     };
+    //   },
+    // });
+
+    return await collectResult(result);
   }
 
   return markup;

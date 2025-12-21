@@ -1,4 +1,4 @@
-import { DiscordActionRow, DiscordAttachment, DiscordSpoiler } from '@derockdev/discord-components-react';
+import { DiscordActionRow, DiscordFileAttachment, DiscordSpoiler } from '@skyra/discord-components-react';
 import {
   ComponentType,
   type ThumbnailComponent,
@@ -51,30 +51,19 @@ export default function ComponentRow({
         </DiscordContainer>
       );
 
-    case ComponentType.File:
-      return (
-        <>
-          {component.spoiler ? (
-            <DiscordSpoiler key={component.id} slot="attachment">
-              <DiscordAttachment
-                type="file"
-                key={component.id}
-                slot="attachment"
-                url={component.file.url}
-                alt="Discord Attachment"
-              />
-            </DiscordSpoiler>
-          ) : (
-            <DiscordAttachment
-              type="file"
-              key={component.id}
-              slot="attachment"
-              url={component.file.url}
-              alt="Discord Attachment"
-            />
-          )}
-        </>
-      );
+    case ComponentType.File: {
+      const attachmentComponent = <DiscordFileAttachment href={component.file.url} />;
+
+      if (component.spoiler) {
+        return (
+          <DiscordSpoiler key={component.id} slot="attachment">
+            {attachmentComponent}
+          </DiscordSpoiler>
+        );
+      } else {
+        return attachmentComponent;
+      }
+    }
 
     case ComponentType.MediaGallery:
       return <DiscordMediaGallery component={component} key={id} />;
