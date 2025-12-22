@@ -11,9 +11,9 @@ import { streamToString } from '../utils/utils';
 import { collectResult } from '@lit-labs/ssr/lib/render-result';
 import { globalStyles } from './renderers/components/styles';
 import { DiscordAttachmentStyles } from './renderers/components/DiscordImage';
+import { DiscordHighlightStyles } from './renderers/components/DiscordHighlightedCode';
 
 // read the package.json file and get the @derockdev/discord-components-core version
-// TODO: update this
 let discordComponentsVersion = '^4.0.2';
 
 try {
@@ -55,6 +55,7 @@ export default async function render({ messages, channel, callbacks, ...options 
         <style dangerouslySetInnerHTML={{ __html: ggSansFont }} />
         <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
         <style dangerouslySetInnerHTML={{ __html: DiscordAttachmentStyles }} />
+        <style dangerouslySetInnerHTML={{ __html: DiscordHighlightStyles }} />
 
         {/* favicon */}
         <link
