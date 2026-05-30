@@ -22,13 +22,13 @@ export default async function DiscordMessage({
   const forwardedMessage = isForwarded ? getForwardedMessage(message, context.messages) : null;
   const rawForwardedSnapshot = isForwarded ? getRawForwardedSnapshot(message) : null;
   const forwardedSourceMessage = isForwarded ? (forwardedMessage ?? message) : null;
-  const forwardedContent = forwardedMessage
-    ? stripForwardedAuthorPrefix(forwardedMessage.content)
-    : rawForwardedSnapshot?.content
-      ? stripForwardedAuthorPrefix(rawForwardedSnapshot.content)
-    : isForwarded
-      ? stripForwardedAuthorPrefix(message.content)
-      : message.content;
+  const forwardedContent = rawForwardedSnapshot?.content
+    ? stripForwardedAuthorPrefix(rawForwardedSnapshot.content)
+    : forwardedMessage
+      ? stripForwardedAuthorPrefix(forwardedMessage.content)
+      : isForwarded
+        ? stripForwardedAuthorPrefix(message.content)
+        : message.content;
   const displayTimestamp = message.createdAt.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
@@ -76,25 +76,46 @@ export default async function DiscordMessage({
             ╭➤ Forwarded
           </div>
 
-          {forwardedMessage ? (
-            <discord-quote>
-              <ForwardedMessageBody
-                message={forwardedMessage}
-                context={context}
-                fallbackContent={forwardedContent}
-              />
-            </discord-quote>
-          ) : rawForwardedSnapshot ? (
+          {rawForwardedSnapshot ? (
             <discord-quote>
               <RawForwardedMessageBody snapshot={rawForwardedSnapshot} fallbackContent={forwardedContent} />
             </discord-quote>
+          ) : forwardedMessage ? (
+            <discord-quote>
+              <discord-message
+                messageBodyOnly
+                timestamp={forwardedMessage.createdAt}
+                profile={forwardedMessage.author.id}
+                edited={forwardedMessage.editedAt !== null}
+                server={!!(forwardedMessage.reference && forwardedMessage.reference.guildId !== forwardedMessage.guild?.id)}
+                highlight={forwardedMessage.mentions.everyone}
+              >
+                <ForwardedMessageBody
+                  message={forwardedMessage}
+                  context={context}
+                  fallbackContent={forwardedContent}
+                />
+              </discord-message>
+            </discord-quote>
           ) : forwardedSourceMessage ? (
             <discord-quote>
-              <ForwardedMessageBody
-                message={forwardedSourceMessage}
-                context={context}
-                fallbackContent={forwardedContent}
-              />
+              <discord-message
+                messageBodyOnly
+                timestamp={forwardedSourceMessage.createdAt}
+                profile={forwardedSourceMessage.author.id}
+                edited={forwardedSourceMessage.editedAt !== null}
+                server={!!(
+                  forwardedSourceMessage.reference &&
+                  forwardedSourceMessage.reference.guildId !== forwardedSourceMessage.guild?.id
+                )}
+                highlight={forwardedSourceMessage.mentions.everyone}
+              >
+                <ForwardedMessageBody
+                  message={forwardedSourceMessage}
+                  context={context}
+                  fallbackContent={forwardedContent}
+                />
+              </discord-message>
             </discord-quote>
           ) : null}
         </div>
@@ -190,20 +211,20 @@ function getForwardedMessage(message: MessageType, transcriptMessages: MessageTy
 
 function getRawForwardedSnapshot(message: MessageType): RawForwardedSnapshot | null {
   const rawMessage = message.toJSON() as {
+    messageSnapshots?: Array<{
+      message?: RawForwardedSnapshot;
+    }>;
     message_snapshots?: Array<{
-      message?: {
-        content?: string;
-        attachments?: Array<{ url?: string; filename?: string }>;
-        embeds?: Array<{ title?: string; description?: string; url?: string }>;
-      };
+      message?: RawForwardedSnapshot;
     }>;
   };
 
-  const snapshot = rawMessage.message_snapshots?.[0]?.message;
+  const snapshots = rawMessage.messageSnapshots ?? rawMessage.message_snapshots;
+  const snapshot = (snapshots?.[0]?.message ?? snapshots?.[0]) as RawForwardedSnapshot | undefined;
   if (!snapshot) return null;
 
   return {
-    content: snapshot.content,
+    content: typeof snapshot.content === 'string' ? snapshot.content : undefined,
     attachments: Array.isArray(snapshot.attachments) ? snapshot.attachments : [],
     embeds: Array.isArray(snapshot.embeds) ? snapshot.embeds : [],
   };
