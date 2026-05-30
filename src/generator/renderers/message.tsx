@@ -115,6 +115,9 @@ export default async function DiscordMessage({
         />
       )}
 
+      {/* stickers */}
+      {!isForwarded && message.stickers.size > 0 && <Stickers stickers={message.stickers} />}
+
       {/* attachments */}
       {!isForwarded && <Attachments message={message} context={context} />}
 
@@ -220,8 +223,8 @@ function getRawForwardedSnapshot(message: MessageType): RawForwardedSnapshot | n
     embeds: Array.isArray(snapshot.embeds) ? snapshot.embeds : [],
     components: Array.isArray(snapshot.components) ? snapshot.components : [],
     stickers: Array.isArray(snapshot.stickers) ? snapshot.stickers : [],
-    stickerItems: Array.isArray((snapshot as { sticker_items?: Array<{ name?: string }> }).sticker_items)
-      ? (snapshot as { sticker_items: Array<{ name?: string }> }).sticker_items
+    stickerItems: Array.isArray((snapshot as { sticker_items?: Array<RawStickerData> }).sticker_items)
+      ? (snapshot as { sticker_items: Array<RawStickerData> }).sticker_items
       : [],
   };
 }
@@ -231,9 +234,9 @@ type RawForwardedSnapshot = {
   attachments: Array<{ url?: string; filename?: string }>;
   embeds: Array<{ title?: string; description?: string; url?: string }>;
   components: Array<unknown>;
-  stickers: Array<{ name?: string }>;
-  stickerItems: Array<{ name?: string }>;
-  sticker_items?: Array<{ name?: string }>;
+  stickers: Array<RawStickerData>;
+  stickerItems: Array<RawStickerData>;
+  sticker_items?: Array<RawStickerData>;
 };
 
 function RawForwardedMessageBody({
@@ -282,19 +285,56 @@ function RawForwardedMessageBody({
         <ComponentRow key={`forwarded-component-${id}`} id={id} component={component as never} context={context} />
       ))}
 
-      {snapshot.stickers.map((sticker, id) => (
-        <div key={`forwarded-sticker-${id}`} style={{ color: '#b5bac1', fontSize: '12px' }}>
-          Sticker: {sticker.name ?? 'Unnamed'}
-        </div>
-      ))}
-
-      {snapshot.stickerItems.map((stickerItem, id) => (
-        <div key={`forwarded-sticker-item-${id}`} style={{ color: '#b5bac1', fontSize: '12px' }}>
-          Sticker item: {stickerItem.name ?? 'Unnamed'}
-        </div>
-      ))}
+      <RawStickers stickers={[...snapshot.stickers, ...snapshot.stickerItems]} />
 
       {!hasAnyPayload && <em style={{ color: '#949ba4' }}>Forwarded message content unavailable.</em>}
     </>
   );
 }
+
+function Stickers({ stickers }: { stickers: MessageType['stickers'] }) {
+  if (stickers.size === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+      {Array.from(stickers.values()).map((sticker) => (
+        <div key={sticker.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <img
+            src={sticker.url}
+            alt={sticker.name}
+            style={{ maxWidth: '160px', width: '100%', height: 'auto', borderRadius: '8px' }}
+          />
+          <div style={{ color: '#b5bac1', fontSize: '12px' }}>{sticker.name}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RawStickers({ stickers }: { stickers: RawStickerData[] }) {
+  const visibleStickers = stickers.filter((sticker) => sticker && (sticker.name || sticker.url));
+  if (visibleStickers.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+      {visibleStickers.map((sticker, id) => (
+        <div key={`raw-sticker-${id}`} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {'url' in sticker && sticker.url ? (
+            <img
+              src={sticker.url}
+              alt={sticker.name ?? 'Sticker'}
+              style={{ maxWidth: '160px', width: '100%', height: 'auto', borderRadius: '8px' }}
+            />
+          ) : null}
+          <div style={{ color: '#b5bac1', fontSize: '12px' }}>{sticker.name ?? 'Unnamed sticker'}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type RawStickerData = {
+  id?: string;
+  name?: string;
+  url?: string;
+};
