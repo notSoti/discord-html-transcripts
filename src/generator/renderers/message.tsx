@@ -17,8 +17,15 @@ export default async function DiscordMessage({
 }) {
   if (message.system) return <DiscordSystemMessage message={message} />;
 
+  const renderContext = context as RenderMessageContext & {
+    _internal?: {
+      renderForwardedSource?: boolean;
+    };
+  };
+
+  const renderForwardedSource = renderContext._internal?.renderForwardedSource === true;
   const isCrosspost = message.reference && message.reference.guildId !== message.guild?.id;
-  const isForwarded = message.reference?.type === MessageReferenceType.Forward;
+  const isForwarded = !renderForwardedSource && message.reference?.type === MessageReferenceType.Forward;
   const forwardedMessage = isForwarded ? getForwardedMessage(message, context.messages) : null;
   const rawForwardedSnapshot = isForwarded ? getRawForwardedSnapshot(message) : null;
   const forwardedContent = rawForwardedSnapshot?.content
@@ -77,7 +84,18 @@ export default async function DiscordMessage({
 
           {forwardedMessage ? (
             <discord-quote>
-              <DiscordMessage message={forwardedMessage} context={context} />
+              <DiscordMessage
+                message={forwardedMessage}
+                context={
+                  {
+                    ...renderContext,
+                    _internal: {
+                      ...(renderContext._internal ?? {}),
+                      renderForwardedSource: true,
+                    },
+                  } as RenderMessageContext
+                }
+              />
             </discord-quote>
           ) : rawForwardedSnapshot ? (
             <discord-quote>
