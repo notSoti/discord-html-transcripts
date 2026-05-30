@@ -49,7 +49,6 @@ export async function generateFromMessages<T extends ExportReturnType = ExportRe
       );
     } else {
       resolveImageSrc = new TranscriptImageDownloader().build();
-      console.log('Using default downloader');
     }
   }
 
