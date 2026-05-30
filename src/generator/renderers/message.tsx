@@ -19,7 +19,12 @@ export default async function DiscordMessage({
 
   const isCrosspost = message.reference && message.reference.guildId !== message.guild?.id;
   const isForwarded = message.reference?.type === MessageReferenceType.Forward;
-  const forwardedContent = isForwarded ? stripForwardedAuthorPrefix(message.content) : message.content;
+  const forwardedMessage = isForwarded ? getForwardedMessage(message) : null;
+  const forwardedContent = forwardedMessage
+    ? stripForwardedAuthorPrefix(forwardedMessage.content)
+    : isForwarded
+      ? stripForwardedAuthorPrefix(message.content)
+      : message.content;
 
   return (
     <discord-message
@@ -62,14 +67,18 @@ export default async function DiscordMessage({
             ⤷ Forwarded
           </div>
 
-          {forwardedContent && (
+          {forwardedMessage ? (
+            <discord-quote>
+              <ForwardedMessageBody message={forwardedMessage} context={context} fallbackContent={forwardedContent} />
+            </discord-quote>
+          ) : forwardedContent ? (
             <discord-quote>
               <MessageContent
                 content={forwardedContent}
                 context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
               />
             </discord-quote>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -144,4 +153,67 @@ export default async function DiscordMessage({
 
 function stripForwardedAuthorPrefix(content: string) {
   return content.replace(/^\s*\*\*[^*]+\*\*:\s*/, '');
+}
+
+function getForwardedMessage(message: MessageType) {
+  const messageId = message.reference?.messageId;
+
+  if (messageId && message.messageSnapshots.has(messageId)) {
+    return (message.messageSnapshots.get(messageId) ?? null) as MessageType | null;
+  }
+
+  return (message.messageSnapshots.first() ?? null) as MessageType | null;
+}
+
+async function ForwardedMessageBody({
+  message,
+  context,
+  fallbackContent,
+}: {
+  message: MessageType;
+  context: RenderMessageContext;
+  fallbackContent: string;
+}) {
+  return (
+    <>
+      {message.content ? (
+        <MessageContent
+          content={stripForwardedAuthorPrefix(message.content) || fallbackContent}
+          context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
+        />
+      ) : fallbackContent ? (
+        <MessageContent
+          content={fallbackContent}
+          context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
+        />
+      ) : null}
+
+      <Attachments message={message} context={context} />
+
+      {message.embeds.map((embed, id) => (
+        <DiscordEmbed embed={embed} context={{ ...context, index: id, message }} key={id} />
+      ))}
+
+      {message.components.length > 0 && (
+        <discord-attachments slot="components">
+          {message.components.map((component, id) => (
+            <ComponentRow key={id} id={id} component={component} context={context} />
+          ))}
+        </discord-attachments>
+      )}
+
+      {message.reactions.cache.size > 0 && (
+        <discord-reactions slot="reactions">
+          {message.reactions.cache.map((reaction, id) => (
+            <discord-reaction
+              key={`${message.id}r${id}`}
+              name={reaction.emoji.name!}
+              emoji={parseDiscordEmoji(reaction.emoji)}
+              count={reaction.count}
+            />
+          ))}
+        </discord-reactions>
+      )}
+    </>
+  );
 }
