@@ -1,5 +1,4 @@
 import { MessageReferenceType, type Message as MessageType } from 'discord.js';
-import debug from 'debug';
 import type { RenderMessageContext } from '..';
 import { parseDiscordEmoji } from '../../utils/utils';
 import { Attachments } from './attachment';
@@ -9,7 +8,6 @@ import { DiscordEmbed } from './embed';
 import MessageReply from './reply';
 import DiscordSystemMessage from './systemMessage';
 
-const log = debug('discord-html-transcripts:MessageRenderer');
 
 export default async function DiscordMessage({
   message,
@@ -31,12 +29,7 @@ export default async function DiscordMessage({
   const isForwarded = !renderForwardedSource && message.reference?.type === MessageReferenceType.Forward;
   const forwardedMessage = isForwarded ? getForwardedMessage(message, context.messages) : null;
   const rawForwardedSnapshot = isForwarded ? getRawForwardedSnapshot(message) : null;
-  if (isForwarded) {
-    log(`forwarded message detected: ${message.id}`);
-  }
-  if (rawForwardedSnapshot) {
-    log(`using raw forwarded snapshot for message: ${message.id}`);
-  }
+
   const forwardedContent = rawForwardedSnapshot?.content
     ? stripForwardedAuthorPrefix(rawForwardedSnapshot.content)
     : forwardedMessage
@@ -192,19 +185,16 @@ function getForwardedMessage(message: MessageType, transcriptMessages: MessageTy
   const messageId = message.reference?.messageId;
 
   if (messageId && message.messageSnapshots.has(messageId)) {
-    log(`resolved forwarded message from messageSnapshots for ${message.id}`);
     return (message.messageSnapshots.get(messageId) ?? null) as MessageType | null;
   }
 
   if (messageId) {
     const inTranscript = transcriptMessages.find((transcriptMessage) => transcriptMessage.id === messageId);
     if (inTranscript) {
-      log(`resolved forwarded message from transcript cache for ${message.id}`);
       return inTranscript;
     }
   }
 
-  log(`no hydrated forwarded message found for ${message.id}`);
   return (message.messageSnapshots.first() ?? null) as MessageType | null;
 }
 
@@ -221,11 +211,8 @@ function getRawForwardedSnapshot(message: MessageType): RawForwardedSnapshot | n
   const snapshots = rawMessage.messageSnapshots ?? rawMessage.message_snapshots;
   const snapshot = (snapshots?.[0]?.message ?? snapshots?.[0]) as RawForwardedSnapshot | undefined;
   if (!snapshot) {
-    log(`no raw forwarded snapshot found for ${message.id}`);
     return null;
   }
-
-  log(`raw forwarded snapshot found for ${message.id}: content=${Boolean(snapshot.content)} embeds=${snapshot.embeds?.length ?? 0} attachments=${snapshot.attachments?.length ?? 0} components=${snapshot.components?.length ?? 0}`);
 
   return {
     content: typeof snapshot.content === 'string' ? snapshot.content : undefined,
