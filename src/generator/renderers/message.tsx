@@ -78,44 +78,15 @@ export default async function DiscordMessage({
 
           {rawForwardedSnapshot ? (
             <discord-quote>
-              <RawForwardedMessageBody snapshot={rawForwardedSnapshot} fallbackContent={forwardedContent} />
+              <RawForwardedMessageBody snapshot={rawForwardedSnapshot} fallbackContent={forwardedContent} context={context} />
             </discord-quote>
           ) : forwardedMessage ? (
             <discord-quote>
-              <discord-message
-                messageBodyOnly
-                timestamp={forwardedMessage.createdAt}
-                profile={forwardedMessage.author.id}
-                edited={forwardedMessage.editedAt !== null}
-                server={!!(forwardedMessage.reference && forwardedMessage.reference.guildId !== forwardedMessage.guild?.id)}
-                highlight={forwardedMessage.mentions.everyone}
-              >
-                <ForwardedMessageBody
-                  message={forwardedMessage}
-                  context={context}
-                  fallbackContent={forwardedContent}
-                />
-              </discord-message>
+              <DiscordMessage message={forwardedMessage} context={context} />
             </discord-quote>
           ) : forwardedSourceMessage ? (
             <discord-quote>
-              <discord-message
-                messageBodyOnly
-                timestamp={forwardedSourceMessage.createdAt}
-                profile={forwardedSourceMessage.author.id}
-                edited={forwardedSourceMessage.editedAt !== null}
-                server={!!(
-                  forwardedSourceMessage.reference &&
-                  forwardedSourceMessage.reference.guildId !== forwardedSourceMessage.guild?.id
-                )}
-                highlight={forwardedSourceMessage.mentions.everyone}
-              >
-                <ForwardedMessageBody
-                  message={forwardedSourceMessage}
-                  context={context}
-                  fallbackContent={forwardedContent}
-                />
-              </discord-message>
+              <DiscordMessage message={forwardedSourceMessage} context={context} />
             </discord-quote>
           ) : null}
         </div>
@@ -227,80 +198,41 @@ function getRawForwardedSnapshot(message: MessageType): RawForwardedSnapshot | n
     content: typeof snapshot.content === 'string' ? snapshot.content : undefined,
     attachments: Array.isArray(snapshot.attachments) ? snapshot.attachments : [],
     embeds: Array.isArray(snapshot.embeds) ? snapshot.embeds : [],
+    components: Array.isArray(snapshot.components) ? snapshot.components : [],
+    stickers: Array.isArray(snapshot.stickers) ? snapshot.stickers : [],
+    stickerItems: Array.isArray((snapshot as { sticker_items?: Array<{ name?: string }> }).sticker_items)
+      ? (snapshot as { sticker_items: Array<{ name?: string }> }).sticker_items
+      : [],
   };
-}
-
-async function ForwardedMessageBody({
-  message,
-  context,
-  fallbackContent,
-}: {
-  message: MessageType;
-  context: RenderMessageContext;
-  fallbackContent: string;
-}) {
-  const hasPayload =
-    Boolean(message.content || fallbackContent) ||
-    message.attachments.size > 0 ||
-    message.embeds.length > 0 ||
-    message.components.length > 0 ||
-    message.reactions.cache.size > 0;
-
-  return (
-    <>
-      {message.content ? (
-        <MessageContent
-          content={stripForwardedAuthorPrefix(message.content) || fallbackContent}
-          context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
-        />
-      ) : fallbackContent ? (
-        <MessageContent
-          content={fallbackContent}
-          context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
-        />
-      ) : !hasPayload ? (
-        <em style={{ color: '#949ba4' }}>Forwarded message content unavailable.</em>
-      ) : null}
-
-      <Attachments message={message} context={context} />
-
-      {message.embeds.map((embed, id) => (
-        <DiscordEmbed embed={embed} context={{ ...context, index: id, message }} key={id} />
-      ))}
-
-      {message.components.length > 0 && (
-        <discord-attachments slot="components">
-          {message.components.map((component, id) => (
-            <ComponentRow key={id} id={id} component={component} context={context} />
-          ))}
-        </discord-attachments>
-      )}
-
-      {message.reactions.cache.size > 0 && (
-        <discord-reactions slot="reactions">
-          {message.reactions.cache.map((reaction, id) => (
-            <discord-reaction
-              key={`${message.id}r${id}`}
-              name={reaction.emoji.name!}
-              emoji={parseDiscordEmoji(reaction.emoji)}
-              count={reaction.count}
-            />
-          ))}
-        </discord-reactions>
-      )}
-    </>
-  );
 }
 
 type RawForwardedSnapshot = {
   content?: string;
   attachments: Array<{ url?: string; filename?: string }>;
   embeds: Array<{ title?: string; description?: string; url?: string }>;
+  components: Array<unknown>;
+  stickers: Array<{ name?: string }>;
+  stickerItems: Array<{ name?: string }>;
+  sticker_items?: Array<{ name?: string }>;
 };
 
-function RawForwardedMessageBody({ snapshot, fallbackContent }: { snapshot: RawForwardedSnapshot; fallbackContent: string }) {
+function RawForwardedMessageBody({
+  snapshot,
+  fallbackContent,
+  context,
+}: {
+  snapshot: RawForwardedSnapshot;
+  fallbackContent: string;
+  context: RenderMessageContext;
+}) {
   const normalizedContent = snapshot.content ? stripForwardedAuthorPrefix(snapshot.content) : fallbackContent;
-  const hasAnyPayload = Boolean(normalizedContent) || snapshot.attachments.length > 0 || snapshot.embeds.length > 0;
+  const hasAnyPayload =
+    Boolean(normalizedContent) ||
+    snapshot.attachments.length > 0 ||
+    snapshot.embeds.length > 0 ||
+    snapshot.components.length > 0 ||
+    snapshot.stickers.length > 0 ||
+    snapshot.stickerItems.length > 0;
 
   return (
     <>
@@ -323,6 +255,22 @@ function RawForwardedMessageBody({ snapshot, fallbackContent }: { snapshot: RawF
               {embed.url}
             </a>
           ) : null}
+        </div>
+      ))}
+
+      {snapshot.components.map((component, id) => (
+        <ComponentRow key={`forwarded-component-${id}`} id={id} component={component as never} context={context} />
+      ))}
+
+      {snapshot.stickers.map((sticker, id) => (
+        <div key={`forwarded-sticker-${id}`} style={{ color: '#b5bac1', fontSize: '12px' }}>
+          Sticker: {sticker.name ?? 'Unnamed'}
+        </div>
+      ))}
+
+      {snapshot.stickerItems.map((stickerItem, id) => (
+        <div key={`forwarded-sticker-item-${id}`} style={{ color: '#b5bac1', fontSize: '12px' }}>
+          Sticker item: {stickerItem.name ?? 'Unnamed'}
         </div>
       ))}
 
