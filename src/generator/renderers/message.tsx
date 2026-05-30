@@ -19,17 +19,23 @@ export default async function DiscordMessage({
 
   const isCrosspost = message.reference && message.reference.guildId !== message.guild?.id;
   const isForwarded = message.reference?.type === MessageReferenceType.Forward;
-  const forwardedMessage = isForwarded ? getForwardedMessage(message) : null;
+  const forwardedMessage = isForwarded ? getForwardedMessage(message, context.messages) : null;
+  const forwardedSourceMessage = isForwarded ? (forwardedMessage ?? message) : null;
   const forwardedContent = forwardedMessage
     ? stripForwardedAuthorPrefix(forwardedMessage.content)
     : isForwarded
       ? stripForwardedAuthorPrefix(message.content)
       : message.content;
+  const displayTimestamp = message.createdAt.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
   return (
     <discord-message
       id={`m-${message.id}`}
-      timestamp={message.createdAt}
+      timestamp={displayTimestamp}
       key={message.id}
       edited={message.editedAt !== null}
       server={isCrosspost ?? undefined}
@@ -67,15 +73,12 @@ export default async function DiscordMessage({
             ╭➤ Forwarded
           </div>
 
-          {forwardedMessage ? (
+          {forwardedSourceMessage ? (
             <discord-quote>
-              <ForwardedMessageBody message={forwardedMessage} context={context} fallbackContent={forwardedContent} />
-            </discord-quote>
-          ) : forwardedContent ? (
-            <discord-quote>
-              <MessageContent
-                content={forwardedContent}
-                context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
+              <ForwardedMessageBody
+                message={forwardedSourceMessage}
+                context={context}
+                fallbackContent={forwardedContent}
               />
             </discord-quote>
           ) : null}
@@ -90,15 +93,15 @@ export default async function DiscordMessage({
       )}
 
       {/* attachments */}
-      <Attachments message={message} context={context} />
+      {!isForwarded && <Attachments message={message} context={context} />}
 
       {/* message embeds */}
-      {message.embeds.map((embed, id) => (
+      {!isForwarded && message.embeds.map((embed, id) => (
         <DiscordEmbed embed={embed} context={{ ...context, index: id, message }} key={id} />
       ))}
 
       {/* components */}
-      {message.components.length > 0 && (
+      {!isForwarded && message.components.length > 0 && (
         <discord-attachments slot="components">
           {message.components.map((component, id) => (
             <ComponentRow key={id} id={id} component={component} context={context} />
@@ -107,7 +110,7 @@ export default async function DiscordMessage({
       )}
 
       {/* reactions */}
-      {message.reactions.cache.size > 0 && (
+      {!isForwarded && message.reactions.cache.size > 0 && (
         <discord-reactions slot="reactions">
           {message.reactions.cache.map((reaction, id) => (
             <discord-reaction
@@ -121,7 +124,7 @@ export default async function DiscordMessage({
       )}
 
       {/* threads */}
-      {message.hasThread && message.thread && (
+      {!isForwarded && message.hasThread && message.thread && (
         <discord-thread
           slot="thread"
           name={message.thread.name}
@@ -155,11 +158,16 @@ function stripForwardedAuthorPrefix(content: string) {
   return content.replace(/^\s*\*\*[^*]+\*\*:\s*/, '');
 }
 
-function getForwardedMessage(message: MessageType) {
+function getForwardedMessage(message: MessageType, transcriptMessages: MessageType[]) {
   const messageId = message.reference?.messageId;
 
   if (messageId && message.messageSnapshots.has(messageId)) {
     return (message.messageSnapshots.get(messageId) ?? null) as MessageType | null;
+  }
+
+  if (messageId) {
+    const inTranscript = transcriptMessages.find((transcriptMessage) => transcriptMessage.id === messageId);
+    if (inTranscript) return inTranscript;
   }
 
   return (message.messageSnapshots.first() ?? null) as MessageType | null;
@@ -186,7 +194,9 @@ async function ForwardedMessageBody({
           content={fallbackContent}
           context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
         />
-      ) : null}
+      ) : (
+        <em style={{ color: '#949ba4' }}>Forwarded message content unavailable.</em>
+      )}
 
       <Attachments message={message} context={context} />
 
