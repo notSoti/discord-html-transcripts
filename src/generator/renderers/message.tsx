@@ -1,4 +1,4 @@
-import { type Message as MessageType } from 'discord.js';
+import { MessageReferenceType, type Message as MessageType } from 'discord.js';
 import type { RenderMessageContext } from '..';
 import { parseDiscordEmoji } from '../../utils/utils';
 import { Attachments } from './attachment';
@@ -18,6 +18,8 @@ export default async function DiscordMessage({
   if (message.system) return <DiscordSystemMessage message={message} />;
 
   const isCrosspost = message.reference && message.reference.guildId !== message.guild?.id;
+  const isForwarded = message.reference?.type === MessageReferenceType.Forward;
+  const forwardedContent = isForwarded ? stripForwardedAuthorPrefix(message.content) : message.content;
 
   return (
     <discord-message
@@ -30,7 +32,7 @@ export default async function DiscordMessage({
       profile={message.author.id}
     >
       {/* reply */}
-      <MessageReply message={message} context={context} />
+      {!isForwarded && <MessageReply message={message} context={context} />}
 
       {/* slash command */}
       {message.interaction && (
@@ -42,7 +44,36 @@ export default async function DiscordMessage({
       )}
 
       {/* message content */}
-      {message.content && (
+      {isForwarded && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+          }}
+        >
+          <div
+            style={{
+              color: '#949ba4',
+              fontSize: '12px',
+              lineHeight: 1.2,
+            }}
+          >
+            ⤷ Forwarded
+          </div>
+
+          {forwardedContent && (
+            <discord-quote>
+              <MessageContent
+                content={forwardedContent}
+                context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
+              />
+            </discord-quote>
+          )}
+        </div>
+      )}
+
+      {!isForwarded && message.content && (
         <MessageContent
           content={message.content}
           context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
@@ -109,4 +140,8 @@ export default async function DiscordMessage({
       )}
     </discord-message>
   );
+}
+
+function stripForwardedAuthorPrefix(content: string) {
+  return content.replace(/^\s*\*\*[^*]+\*\*:\s*/, '');
 }
