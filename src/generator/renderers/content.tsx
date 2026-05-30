@@ -82,6 +82,39 @@ export async function MessageSingleASTNode({ node, context }: { node: SingleASTN
   const type = node.type as RuleTypesExtended;
 
   switch (type) {
+    case 'heading': {
+      const level = Math.min(Math.max(node.level ?? 1, 1), 3);
+      const fontSizes = ['1.5rem', '1.35rem', '1.2rem'];
+
+      return (
+        <div
+          style={{
+            display: 'block',
+            fontSize: fontSizes[level - 1],
+            fontWeight: 700,
+            lineHeight: 1.25,
+            margin: 0,
+          }}
+        >
+          <MessageASTNodes nodes={node.content} context={context} />
+        </div>
+      );
+    }
+
+    case 'subtext':
+      return (
+        <div
+          style={{
+            display: 'block',
+            fontSize: '0.85rem',
+            lineHeight: 1.35,
+            color: '#b5bac1',
+          }}
+        >
+          <MessageASTNodes nodes={node.content} context={context} />
+        </div>
+      );
+
     case 'text':
       return node.content;
 
