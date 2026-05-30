@@ -21,7 +21,6 @@ export default async function DiscordMessage({
   const isForwarded = message.reference?.type === MessageReferenceType.Forward;
   const forwardedMessage = isForwarded ? getForwardedMessage(message, context.messages) : null;
   const rawForwardedSnapshot = isForwarded ? getRawForwardedSnapshot(message) : null;
-  const forwardedSourceMessage = isForwarded ? (forwardedMessage ?? message) : null;
   const forwardedContent = rawForwardedSnapshot?.content
     ? stripForwardedAuthorPrefix(rawForwardedSnapshot.content)
     : forwardedMessage
@@ -76,17 +75,13 @@ export default async function DiscordMessage({
             ╭➤ Forwarded
           </div>
 
-          {rawForwardedSnapshot ? (
-            <discord-quote>
-              <RawForwardedMessageBody snapshot={rawForwardedSnapshot} fallbackContent={forwardedContent} context={context} />
-            </discord-quote>
-          ) : forwardedMessage ? (
+          {forwardedMessage ? (
             <discord-quote>
               <DiscordMessage message={forwardedMessage} context={context} />
             </discord-quote>
-          ) : forwardedSourceMessage ? (
+          ) : rawForwardedSnapshot ? (
             <discord-quote>
-              <DiscordMessage message={forwardedSourceMessage} context={context} />
+              <RawForwardedMessageBody snapshot={rawForwardedSnapshot} fallbackContent={forwardedContent} context={context} />
             </discord-quote>
           ) : null}
         </div>
