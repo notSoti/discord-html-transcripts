@@ -20,9 +20,12 @@ export default async function DiscordMessage({
   const isCrosspost = message.reference && message.reference.guildId !== message.guild?.id;
   const isForwarded = message.reference?.type === MessageReferenceType.Forward;
   const forwardedMessage = isForwarded ? getForwardedMessage(message, context.messages) : null;
+  const rawForwardedSnapshot = isForwarded ? getRawForwardedSnapshot(message) : null;
   const forwardedSourceMessage = isForwarded ? (forwardedMessage ?? message) : null;
   const forwardedContent = forwardedMessage
     ? stripForwardedAuthorPrefix(forwardedMessage.content)
+    : rawForwardedSnapshot?.content
+      ? stripForwardedAuthorPrefix(rawForwardedSnapshot.content)
     : isForwarded
       ? stripForwardedAuthorPrefix(message.content)
       : message.content;
@@ -73,7 +76,19 @@ export default async function DiscordMessage({
             ╭➤ Forwarded
           </div>
 
-          {forwardedSourceMessage ? (
+          {forwardedMessage ? (
+            <discord-quote>
+              <ForwardedMessageBody
+                message={forwardedMessage}
+                context={context}
+                fallbackContent={forwardedContent}
+              />
+            </discord-quote>
+          ) : rawForwardedSnapshot ? (
+            <discord-quote>
+              <RawForwardedMessageBody snapshot={rawForwardedSnapshot} fallbackContent={forwardedContent} />
+            </discord-quote>
+          ) : forwardedSourceMessage ? (
             <discord-quote>
               <ForwardedMessageBody
                 message={forwardedSourceMessage}
@@ -173,6 +188,27 @@ function getForwardedMessage(message: MessageType, transcriptMessages: MessageTy
   return (message.messageSnapshots.first() ?? null) as MessageType | null;
 }
 
+function getRawForwardedSnapshot(message: MessageType): RawForwardedSnapshot | null {
+  const rawMessage = message.toJSON() as {
+    message_snapshots?: Array<{
+      message?: {
+        content?: string;
+        attachments?: Array<{ url?: string; filename?: string }>;
+        embeds?: Array<{ title?: string; description?: string; url?: string }>;
+      };
+    }>;
+  };
+
+  const snapshot = rawMessage.message_snapshots?.[0]?.message;
+  if (!snapshot) return null;
+
+  return {
+    content: snapshot.content,
+    attachments: Array.isArray(snapshot.attachments) ? snapshot.attachments : [],
+    embeds: Array.isArray(snapshot.embeds) ? snapshot.embeds : [],
+  };
+}
+
 async function ForwardedMessageBody({
   message,
   context,
@@ -182,6 +218,13 @@ async function ForwardedMessageBody({
   context: RenderMessageContext;
   fallbackContent: string;
 }) {
+  const hasPayload =
+    Boolean(message.content || fallbackContent) ||
+    message.attachments.size > 0 ||
+    message.embeds.length > 0 ||
+    message.components.length > 0 ||
+    message.reactions.cache.size > 0;
+
   return (
     <>
       {message.content ? (
@@ -194,9 +237,9 @@ async function ForwardedMessageBody({
           content={fallbackContent}
           context={{ ...context, type: message.webhookId ? RenderType.WEBHOOK : RenderType.NORMAL }}
         />
-      ) : (
+      ) : !hasPayload ? (
         <em style={{ color: '#949ba4' }}>Forwarded message content unavailable.</em>
-      )}
+      ) : null}
 
       <Attachments message={message} context={context} />
 
@@ -224,6 +267,45 @@ async function ForwardedMessageBody({
           ))}
         </discord-reactions>
       )}
+    </>
+  );
+}
+
+type RawForwardedSnapshot = {
+  content?: string;
+  attachments: Array<{ url?: string; filename?: string }>;
+  embeds: Array<{ title?: string; description?: string; url?: string }>;
+};
+
+function RawForwardedMessageBody({ snapshot, fallbackContent }: { snapshot: RawForwardedSnapshot; fallbackContent: string }) {
+  const normalizedContent = snapshot.content ? stripForwardedAuthorPrefix(snapshot.content) : fallbackContent;
+  const hasAnyPayload = Boolean(normalizedContent) || snapshot.attachments.length > 0 || snapshot.embeds.length > 0;
+
+  return (
+    <>
+      {normalizedContent ? <span>{normalizedContent}</span> : null}
+
+      {snapshot.attachments.map((attachment, id) => (
+        <div key={`forwarded-attachment-${id}`}>
+          <a href={attachment.url} target="_blank" rel="noreferrer">
+            {attachment.filename || attachment.url || 'Attachment'}
+          </a>
+        </div>
+      ))}
+
+      {snapshot.embeds.map((embed, id) => (
+        <div key={`forwarded-embed-${id}`} style={{ color: '#b5bac1' }}>
+          {embed.title ? <strong>{embed.title}</strong> : null}
+          {embed.description ? <div>{embed.description}</div> : null}
+          {embed.url ? (
+            <a href={embed.url} target="_blank" rel="noreferrer">
+              {embed.url}
+            </a>
+          ) : null}
+        </div>
+      ))}
+
+      {!hasAnyPayload && <em style={{ color: '#949ba4' }}>Forwarded message content unavailable.</em>}
     </>
   );
 }
