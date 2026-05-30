@@ -64,7 +64,7 @@ export default async function DiscordMessage({
               lineHeight: 1.2,
             }}
           >
-            ⤷ Forwarded
+            ╭➤ Forwarded
           </div>
 
           {forwardedMessage ? (
