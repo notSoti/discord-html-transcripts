@@ -11,6 +11,7 @@
     "prepare": "npm run build",
     "prepack": "npm run build",
     "test:typescript": "ts-node --project tsconfig.test.json ./tests/generate.ts",
+    "preview:mock": "npm run build && ts-node --project tsconfig.test.json ./tests/mock-preview.ts",
     "test:send-components-v2": "ts-node ./tests/components-v2-send.ts",
     "lint": "prettier --write --cache . && eslint --cache --fix .",
     "typecheck": "tsc -p tsconfig.eslint.json"
