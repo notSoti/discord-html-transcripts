@@ -249,8 +249,6 @@ export async function MessageSingleASTNode({ node, context }: { node: SingleASTN
       );
 
     case 'timestamp':
-      // TODO: Make this reactive
-      // https://github.com/ItzDerock/discord-components/blob/main/packages/core/src/components/discord-time/discord-time.tsx
       {
         const timestamp = Number(node.timestamp);
 
@@ -259,18 +257,23 @@ export async function MessageSingleASTNode({ node, context }: { node: SingleASTN
         }
 
         const date = new Date(timestamp * 1000);
+        const format = node.format ?? 'f';
 
         return (
-          <discord-time>
-            {date.toLocaleTimeString(undefined, {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            })}
-          </discord-time>
+          <time
+            className="discord-timestamp"
+            dateTime={date.toISOString()}
+            data-epoch={timestamp}
+            data-format={format}
+            data-tooltip={date.toISOString()}
+            aria-label={date.toISOString()}
+            tabIndex={0}
+            role="button"
+          >
+            {date.toISOString()}
+          </time>
         );
       }
-    // return <DiscordTime timestamp={parseInt(node.timestamp) * 1000} format={node.format} />;
 
     default: {
       console.log(`[discord-html-transcripts] Unknown node type: ${type}`, node);

@@ -66,6 +66,55 @@ export const globalStyles = `
     transition: background-color 0.2s ease;
   }
 
+  discord-action-row > .discord-button {
+    margin: 0 4px 4px 0;
+  }
+
+  discord-mention {
+    display: inline-block !important;
+    vertical-align: baseline;
+    white-space: nowrap;
+  }
+
+  .discord-timestamp {
+    display: inline-block;
+    position: relative;
+    vertical-align: baseline;
+    white-space: nowrap;
+    cursor: help;
+    padding: 0 3px;
+    border-radius: 3px;
+    background-color: #ffffff0f;
+  }
+
+  discord-text-display discord-mention,
+  discord-text-display .discord-timestamp {
+    display: inline-block !important;
+    vertical-align: baseline;
+  }
+
+  .discord-timestamp:hover::after,
+  .discord-timestamp:focus-visible::after,
+  .discord-timestamp[data-tooltip-visible='true']::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    z-index: 20;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: min(280px, 80vw);
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #111214;
+    color: #f2f3f5;
+    font: 12px/1.4 'gg sans', 'Noto Sans', sans-serif;
+    white-space: normal;
+    text-align: center;
+    box-shadow: 0 2px 8px #0008;
+    pointer-events: none;
+  }
+
   .discord-button-primary {
     background-color: hsl(234.935 calc(1*85.556%) 64.706% /1);
   }

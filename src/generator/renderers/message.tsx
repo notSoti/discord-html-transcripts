@@ -37,14 +37,9 @@ export default async function DiscordMessage({
       : isForwarded
         ? stripForwardedAuthorPrefix(message.content)
         : message.content;
-  const displayTimestamp = message.createdAt.toLocaleString(undefined, {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+  // Keep the absolute instant in the HTML; the browser formats it in the
+  // viewer's timezone instead of baking the generator server's timezone in.
+  const displayTimestamp = message.createdAt.toISOString();
   const profileId = message.author?.id ?? undefined;
 
   return (

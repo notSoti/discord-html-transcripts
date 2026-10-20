@@ -1,7 +1,7 @@
 import { type Awaitable, type Channel, type Message, type Role, type User } from 'discord.js';
 import { prerenderToNodeStream } from 'react-dom/static';
 import { buildProfiles } from '../utils/buildProfiles';
-import { ggSansFont, revealSpoiler, scrollToMessage } from '../static/client';
+import { formatDiscordTimestamps, ggSansFont, revealSpoiler, scrollToMessage } from '../static/client';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { render as renderLit } from '@lit-labs/ssr';
@@ -105,6 +105,8 @@ export default async function render({ messages, channel, callbacks, ...options 
       >
         <DiscordMessages messages={messages} channel={channel} callbacks={callbacks} {...options} />
       </body>
+
+      <script dangerouslySetInnerHTML={{ __html: formatDiscordTimestamps }}></script>
 
       {/* Make sure the script runs after the DOM has loaded */}
       {options.hydrate && <script dangerouslySetInnerHTML={{ __html: revealSpoiler }}></script>}
